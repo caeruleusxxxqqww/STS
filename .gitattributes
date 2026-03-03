@@ -1,0 +1,3 @@
+# Mark C++/CUDA extension code as vendored (excluded from GitHub language stats)
+openpoints/cpp/** linguist-vendored
+openpoints/dataset/semantic_kitti/utils/** linguist-vendored
