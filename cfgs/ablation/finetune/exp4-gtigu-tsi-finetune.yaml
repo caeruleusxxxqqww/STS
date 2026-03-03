@@ -1,0 +1,128 @@
+# =========================================================================
+# =========================================================================
+# GT-IGU: ✅  |  TSI-Loss: ✅  |  STS+L_cons: ❌
+# =========================================================================
+
+mode: encoder
+pretrained_path: null
+
+use_consistency_loss: false
+tsi_warmup_epochs: 10
+
+dataset:
+  common:
+    NAME: S3DIS
+    data_root: data/S3DIS/s3disfull
+    test_area: 5
+    voxel_size: 0.04
+
+  train:
+    split: train
+    voxel_max: 24000
+    loop: 20
+    presample: False
+
+  val:
+    split: val
+    presample: True
+    voxel_max: null
+
+  test:
+    split: test
+    presample: False
+    voxel_max: null
+
+model:
+  NAME: BaseSeg
+  tsi_loss_args:
+    k_neighbors: 16
+    sigma_g: 0.1
+    lambda_tex: 5.0
+    weight: 0.3
+    debug: false
+    debug_interval: 500
+
+  encoder_args:
+    NAME: PointNextEncoder
+    blocks: [1, 4, 7, 4, 4]
+    strides: [1, 4, 4, 4, 4]
+    use_gt_igu: True
+    sa_layers: 1
+    sa_use_res: False
+    width: 64
+    in_channels: 4
+    expansion: 4
+    radius: 0.1
+    nsample: 32
+    aggr_args:
+      feature_type: 'dp_fj'
+      reduction: 'max'
+    group_args:
+      NAME: 'ballquery'
+      normalize_dp: True
+    conv_args:
+      order: conv-norm-act
+    act_args:
+      act: 'relu'
+    norm_args:
+      norm: 'bn'
+
+  decoder_args:
+    NAME: PointNextDecoder
+
+  cls_args:
+    NAME: SegHead
+    num_classes: 13
+    in_channels: null
+    norm_args:
+      norm: 'bn'
+
+feature_keys: x,heights
+num_classes: 13
+batch_size: 8
+val_batch_size: 1
+
+dataloader:
+  num_workers: 6
+
+datatransforms:
+  train: [ChromaticAutoContrast, PointsToTensor, PointCloudScaling, PointCloudXYZAlign, PointCloudRotation, PointCloudJitter, ChromaticDropGPU, ChromaticNormalize]
+  val: [PointsToTensor, PointCloudXYZAlign, ChromaticNormalize]
+  vote: [ChromaticDropGPU]
+  kwargs:
+    color_drop: 0.2
+    gravity_dim: 2
+    scale: [0.9, 1.1]
+    angle: [0, 0, 1]
+
+val_fn: validate
+ignore_index: -1
+
+epochs: 50
+lr: 0.0005
+min_lr: null
+
+sched: multistep
+decay_epochs: [35, 45]
+decay_rate: 0.1
+warmup_epochs: 5
+
+cls_weighed_loss: False
+criterion_args:
+  NAME: CrossEntropy
+  label_smoothing: 0.0
+  ignore_index: -1
+
+optimizer:
+  NAME: 'adamw'
+  weight_decay: 1.0e-4
+
+grad_norm_clip: 10
+use_voting: False
+
+save_freq: -1
+val_freq: 1
+
+wandb:
+  project: PointNeXt-Ablation-Finetune
+  use_wandb: false

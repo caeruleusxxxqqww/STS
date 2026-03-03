@@ -1,0 +1,131 @@
+# =========================================================================
+# =========================================================================
+#   CUDA_VISIBLE_DEVICES=0 python examples/segmentation/main.py \
+#     --cfg cfgs/s3dis/pointnext-b-cross-domain-finetune.yaml \
+#     pretrained_path=<baseline_checkpoint.pth>
+#
+#   CUDA_VISIBLE_DEVICES=1 python examples/segmentation/main.py \
+#     --cfg cfgs/s3dis/pointnext-b-cross-domain-finetune.yaml \
+#     pretrained_path=<sts_checkpoint.pth> \
+#     use_consistency_loss=true
+# =========================================================================
+
+mode: finetune
+pretrained_path: null
+
+use_consistency_loss: false
+cons_weight: 0.1
+cons_probability: 0.3
+cons_warmup_epochs: 5
+tsi_warmup_epochs: 0
+
+dataset:
+  common:
+    NAME: S3DIS
+    data_root: data/S3DIS/s3disfull
+    test_area: 5
+    voxel_size: 0.04
+  train:
+    split: train
+    voxel_max: 24000
+    loop: 15
+    presample: False
+  val:
+    split: val
+    presample: True
+    voxel_max: null
+  test:
+    split: test
+    presample: False
+    voxel_max: null
+
+model:
+  NAME: BaseSeg
+  encoder_args:
+    NAME: PointNextEncoder
+    blocks: [1, 2, 3, 2, 2]
+    strides: [1, 4, 4, 4, 4]
+    sa_layers: 1
+    sa_use_res: False
+    width: 32                    # PointNeXt-B
+    in_channels: 7
+    expansion: 4
+    radius: 0.1
+    nsample: 32
+    use_gt_igu: False
+    aggr_args:
+      feature_type: 'dp_fj'
+      reduction: 'max'
+    group_args:
+      NAME: 'ballquery'
+      normalize_dp: True
+    conv_args:
+      order: conv-norm-act
+    act_args:
+      act: 'relu'
+    norm_args:
+      norm: 'bn'
+  decoder_args:
+    NAME: PointNextDecoder
+  cls_args:
+    NAME: SegHead
+    global_feat: max
+    num_classes: 13
+    in_channels: null
+    norm_args:
+      norm: 'bn'
+
+feature_keys: pos,x,heights
+num_classes: 13
+batch_size: 8
+val_batch_size: 1
+
+dataloader:
+  num_workers: 6
+
+datatransforms:
+  train: [ChromaticAutoContrast, NumpyChromaticNormalize, PointsToTensor, PointCloudScaling, PointCloudXYZAlign, PointCloudRotation, PointCloudJitter, ChromaticDropGPU]
+  val: [NumpyChromaticNormalize, PointsToTensor, PointCloudXYZAlign]
+  vote: [ChromaticDropGPU]
+  kwargs:
+    color_drop: 0.2
+    gravity_dim: 2
+    scale: [0.9, 1.1]
+    angle: [0, 0, 1]
+    jitter_sigma: 0.005
+    jitter_clip: 0.02
+    color_mean: [0.46259782, 0.46253258, 0.46253258]
+    color_std: [0.693565, 0.6852543, 0.68061745]
+
+val_fn: validate
+ignore_index: -1
+
+epochs: 50
+lr: 0.001
+
+sched: multistep
+decay_epochs: [30, 40]
+decay_rate: 0.1
+warmup_epochs: 0
+
+cls_weighed_loss: False
+criterion_args:
+  NAME: CrossEntropy
+  label_smoothing: 0.2
+  ignore_index: -1
+
+optimizer:
+  NAME: 'adamw'
+  weight_decay: 1.0e-4
+
+grad_norm_clip: 10
+use_voting: False
+
+save_freq: 5
+val_freq: 1
+
+log_dir: 'cross-domain-finetune'
+
+wandb:
+  project: PointNeXt-CrossDomain-Finetune
+  use_wandb: false

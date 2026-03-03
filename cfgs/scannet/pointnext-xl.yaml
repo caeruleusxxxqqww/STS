@@ -1,0 +1,51 @@
+tsi_warmup_epochs: 10
+
+use_consistency_loss: true
+cons_weight: 0.1
+cons_probability: 0.3
+cons_warmup_epochs: 15
+
+# =========================================================================
+# =========================================================================
+model:
+  NAME: BaseSeg
+  tsi_loss_args:
+    k_neighbors: 16       
+    sigma_g: 0.1
+    lambda_tex: 6.0
+    weight: 1.0
+    debug: true
+    debug_interval: 1600
+  encoder_args:
+    NAME: PointNextEncoder
+    blocks: [1, 4, 7, 4, 4]
+    strides: [1, 4, 4, 4, 4]
+    sa_layers: 1
+    sa_use_res: False 
+    width: 64
+    in_channels: 7
+    expansion: 4
+    radius: 0.05
+    nsample: 32 
+    aggr_args:
+      feature_type: 'dp_fj' 
+      reduction: 'max'
+    group_args:
+      NAME: 'ballquery'
+      normalize_dp: True
+    conv_args:
+      order: conv-norm-act
+    act_args:
+      act: 'relu'
+    norm_args:
+      norm: 'bn'
+  decoder_args:
+    NAME: PointNextDecoder
+  cls_args:
+    NAME: SegHead
+    global_feat: max
+    num_classes: 20 
+    in_channels: null
+    norm_args:
+      norm: 'bn'
+batch_size: 1

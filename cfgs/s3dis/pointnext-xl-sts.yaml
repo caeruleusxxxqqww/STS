@@ -1,0 +1,76 @@
+# Model Information
+# GFLOPs  Params.(M)
+#  84.81    41.576
+# Throughput (ins./s): 46.06739325463371 
+
+# =========================================================================
+# =========================================================================
+use_consistency_loss: false
+tsi_warmup_epochs: 10
+
+dataset:
+  common:
+    NAME: S3DIS
+    data_root: data/S3DIS/s3disfull
+    # test_area: 5
+    voxel_size: 0.04
+
+  train:
+    split: train
+    presample: False  
+
+  val:
+    split: val
+    presample: True  
+    voxel_max: null   
+
+  test:
+    split: test
+    presample: False
+    voxel_max: null
+
+model:
+  NAME: BaseSeg
+  tsi_loss_args:
+    k_neighbors: 16
+    sigma_g: 0.4
+    lambda_tex: 3.0
+    weight: 0.3
+    debug: true
+
+  encoder_args:
+    NAME: PointNextEncoder
+    blocks: [1, 4, 7, 4, 4] 
+    strides: [1, 4, 4, 4, 4]
+    use_gt_igu: True
+    sa_layers: 1
+    sa_use_res: False 
+    width: 64 
+    in_channels: 4
+    expansion: 4
+    radius: 0.1
+    nsample: 32 
+    aggr_args:
+      feature_type: 'dp_fj'
+      reduction: 'max'
+    group_args:
+      NAME: 'ballquery'
+      normalize_dp: True
+    conv_args:
+      order: conv-norm-act
+    act_args:
+      act: 'relu'
+    norm_args:
+      norm: 'bn'
+  decoder_args:
+    NAME: PointNextDecoder
+  cls_args:
+    NAME: SegHead
+    num_classes: 13
+    in_channels: null
+    norm_args:
+      norm: 'bn'
+
+# batch_size: 8
+# batch_size: 4
+batch_size: 4
